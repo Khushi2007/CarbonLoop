@@ -62,7 +62,7 @@ export default function WasteLotsPage() {
                       <RegisterCell align="right" mono>
                         {formatTonnes(lot.quantityTonnes)}
                       </RegisterCell>
-                      <RegisterCell mono>{formatCoordinates(lot.latitude, lot.longitude)}</RegisterCell>
+                      <RegisterCell mono>{formatCoordinates(lot.location.latitude, lot.location.longitude)}</RegisterCell>
                       <RegisterCell mono>{formatDate(lot.availableFrom)}</RegisterCell>
                       <RegisterCell>
                         <StatusLabel status={lot.status} />
@@ -102,7 +102,7 @@ export default function WasteLotsPage() {
                     <div className="col-span-2">
                       <dt className="text-foreground-muted">Location</dt>
                       <dd className="font-mono text-foreground-secondary">
-                        {formatCoordinates(lot.latitude, lot.longitude)}
+                        {formatCoordinates(lot.location.latitude, lot.location.longitude)}
                       </dd>
                     </div>
                   </dl>

@@ -91,7 +91,9 @@ export function WasteLotDetail({ id }: { id: string }) {
             </div>
             <div>
               <dt className="font-mono text-xs text-foreground-muted">Location</dt>
-              <dd className="mt-1 font-mono text-lg text-foreground">{formatCoordinates(lot.latitude, lot.longitude)}</dd>
+              <dd className="mt-1 font-mono text-lg text-foreground">
+                {formatCoordinates(lot.location.latitude, lot.location.longitude)}
+              </dd>
             </div>
             <div>
               <dt className="font-mono text-xs text-foreground-muted">Available from</dt>
@@ -100,6 +102,25 @@ export function WasteLotDetail({ id }: { id: string }) {
             <div>
               <dt className="font-mono text-xs text-foreground-muted">Logged</dt>
               <dd className="mt-1 font-mono text-lg text-foreground">{formatDate(lot.createdAt)}</dd>
+            </div>
+            <div>
+              <dt className="font-mono text-xs text-foreground-muted">Generator</dt>
+              <dd className="mt-1 font-mono text-lg text-foreground">
+                {lot.generator.name}
+                {lot.generator.organization ? ` · ${lot.generator.organization}` : ""}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-mono text-xs text-foreground-muted">Moisture</dt>
+              <dd className="mt-1 font-mono text-lg text-foreground">
+                {lot.moisturePercent === null ? "—" : `${lot.moisturePercent.toFixed(1)}%`}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-mono text-xs text-foreground-muted">Quality score</dt>
+              <dd className="mt-1 font-mono text-lg text-foreground">
+                {lot.qualityScore === null ? "—" : lot.qualityScore.toFixed(1)}
+              </dd>
             </div>
           </dl>
 

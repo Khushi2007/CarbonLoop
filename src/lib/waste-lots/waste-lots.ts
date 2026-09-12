@@ -14,6 +14,7 @@ export type WasteLotListing = {
   location: { latitude: number; longitude: number };
   availableFrom: Date;
   status: WasteLotStatus;
+  createdAt: Date;
   generator: { id: string; name: string; organization: string | null };
 };
 
@@ -41,6 +42,7 @@ export async function listWasteLots(filter?: { status?: WasteLotStatusFilter }):
     location: { latitude: Number(lot.latitude), longitude: Number(lot.longitude) },
     availableFrom: lot.availableFrom,
     status: lot.status,
+    createdAt: lot.createdAt,
     generator: { id: lot.generator.id, name: lot.generator.name, organization: lot.generator.organization },
   }));
 }
