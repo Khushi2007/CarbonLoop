@@ -54,7 +54,7 @@ export function LedgerRecordDetail({ id }: { id: string }) {
           </div>
 
           <div className="mt-6 border-b border-border pb-8">
-            <p className="font-mono text-xs text-foreground-muted">Record identity</p>
+            <h2 className="font-mono text-xs text-foreground-muted">Record identity</h2>
             <dl className="mt-3 divide-y divide-border border-y border-border text-sm">
               <div className="flex items-center justify-between py-2">
                 <dt className="text-foreground-secondary">Shipment ID</dt>
@@ -72,7 +72,7 @@ export function LedgerRecordDetail({ id }: { id: string }) {
           </div>
 
           <div className="mt-8 border-b border-border pb-8">
-            <p className="font-mono text-xs text-foreground-muted">Operational context</p>
+            <h2 className="font-mono text-xs text-foreground-muted">Operational context</h2>
             <dl className="mt-3 divide-y divide-border border-y border-border text-sm">
               <div className="flex items-center justify-between py-2">
                 <dt className="text-foreground-secondary">Waste quantity</dt>
@@ -109,7 +109,7 @@ export function LedgerRecordDetail({ id }: { id: string }) {
           </div>
 
           <div className="mt-8 border-b border-border pb-8">
-            <p className="font-mono text-xs text-foreground-muted">Carbon result</p>
+            <h2 className="font-mono text-xs text-foreground-muted">Carbon result</h2>
             <dl className="mt-3 divide-y divide-border border-t border-border text-sm">
               <div className="flex items-center justify-between py-2">
                 <dt className="text-foreground-secondary">Avoided landfill emissions</dt>
@@ -138,7 +138,7 @@ export function LedgerRecordDetail({ id }: { id: string }) {
           </div>
 
           <div className="mt-8">
-            <p className="font-mono text-xs text-foreground-muted">Economic value</p>
+            <h2 className="font-mono text-xs text-foreground-muted">Economic value</h2>
             <dl className="mt-3 divide-y divide-border border-t border-border text-sm">
               <div className="flex items-center justify-between py-2">
                 <dt className="text-foreground-secondary">Transport cost</dt>

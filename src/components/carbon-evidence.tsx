@@ -17,18 +17,25 @@ export function CarbonEvidence({
   hasRoute,
   routeFacilityName,
   state,
+  emphasize = true,
   onCalculate,
 }: {
   hasRoute: boolean;
   routeFacilityName?: string;
   state: CarbonState;
+  /** False once the workflow has moved past this stage (e.g. a shipment already exists) — demotes the action to secondary. */
+  emphasize?: boolean;
   onCalculate: () => void;
 }) {
   return (
     <section className="mt-8 border-t border-border pt-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="font-mono text-xs text-foreground-muted">Carbon</h2>
-        <Button variant="primary" onClick={onCalculate} disabled={!hasRoute || state.status === "loading"}>
+        <h2 className="font-mono text-xs text-foreground-muted">04 — Carbon</h2>
+        <Button
+          variant={emphasize ? "primary" : "secondary"}
+          onClick={onCalculate}
+          disabled={!hasRoute || state.status === "loading"}
+        >
           {state.status === "loading"
             ? "Calculating…"
             : state.status === "success"
@@ -62,7 +69,7 @@ export function CarbonEvidence({
 
       {state.status === "success" && (
         <div className="mt-4 max-w-2xl">
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-3 border-b border-border pb-6 sm:grid-cols-3">
+          <dl className="grid grid-cols-2 gap-x-8 gap-y-3 border-b border-border pb-6">
             <div>
               <dt className="font-mono text-xs text-foreground-muted">Waste lot</dt>
               <dd className="mt-1 text-sm text-foreground">
@@ -73,14 +80,10 @@ export function CarbonEvidence({
               <dt className="font-mono text-xs text-foreground-muted">Facility</dt>
               <dd className="mt-1 text-sm text-foreground">{state.result.facility.name}</dd>
             </div>
-            <div>
-              <dt className="font-mono text-xs text-foreground-muted">Route</dt>
-              <dd className="mt-1 font-mono text-sm text-foreground">{formatKm(state.result.route.distanceKm)}</dd>
-            </div>
           </dl>
 
           <div className="mt-6">
-            <p className="font-mono text-xs text-foreground-muted">Calculation</p>
+            <h3 className="font-mono text-xs text-foreground-muted">Calculation</h3>
             <dl className="mt-3 divide-y divide-border border-y border-border text-sm">
               <div className="flex items-center justify-between py-2">
                 <dt className="text-foreground-secondary">Waste quantity</dt>
@@ -102,7 +105,7 @@ export function CarbonEvidence({
           </div>
 
           <div className="mt-6">
-            <p className="font-mono text-xs text-foreground-muted">Coefficients</p>
+            <h3 className="font-mono text-xs text-foreground-muted">Coefficients</h3>
             <dl className="mt-3 divide-y divide-border border-y border-border text-sm">
               {COEFFICIENT_ROWS.map(({ key, label }) => {
                 const coefficient = state.result.carbon.assumptions[key];
@@ -124,7 +127,7 @@ export function CarbonEvidence({
           </div>
 
           <div className="mt-6">
-            <p className="font-mono text-xs text-foreground-muted">Result</p>
+            <h3 className="font-mono text-xs text-foreground-muted">Result</h3>
             <dl className="mt-3 divide-y divide-border border-t border-border text-sm">
               <div className="flex items-center justify-between py-2">
                 <dt className="text-foreground-secondary">Avoided landfill emissions</dt>

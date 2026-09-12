@@ -28,7 +28,7 @@ export function ShipmentLifecycle({
 
   return (
     <section className="mt-8 border-t border-border pt-8">
-      <h2 className="font-mono text-xs text-foreground-muted">Shipment</h2>
+      <h2 className="font-mono text-xs text-foreground-muted">05 — Shipment</h2>
 
       {state.status === "idle" && !hasCarbon && (
         <p className="mt-4 text-sm text-foreground-secondary">

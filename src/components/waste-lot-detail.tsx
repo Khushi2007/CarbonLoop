@@ -73,12 +73,15 @@ export function WasteLotDetail({ id }: { id: string }) {
 
       {lot && (
         <>
-          <div className="mt-3 flex flex-wrap items-baseline justify-between gap-4 border-b border-border pb-6">
-            <div>
-              <h1 className="text-2xl text-foreground sm:text-3xl">{lot.wasteType}</h1>
-              <p className="mt-1 font-mono text-xs text-foreground-muted">{lot.id}</p>
+          <div className="mt-3 border-b border-border pb-6">
+            <p className="font-mono text-xs text-foreground-muted">01 — Waste Lot</p>
+            <div className="mt-2 flex flex-wrap items-baseline justify-between gap-4">
+              <div>
+                <h1 className="text-2xl text-foreground sm:text-3xl">{lot.wasteType}</h1>
+                <p className="mt-1 font-mono text-xs text-foreground-muted">{lot.id}</p>
+              </div>
+              <StatusLabel status={lot.status} className="text-sm" />
             </div>
-            <StatusLabel status={lot.status} className="text-sm" />
           </div>
 
           <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-6 border-b border-border pb-8 sm:grid-cols-4">
@@ -102,8 +105,12 @@ export function WasteLotDetail({ id }: { id: string }) {
 
           <section className="mt-8">
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <h2 className="font-mono text-xs text-foreground-muted">Facility matches</h2>
-              <Button variant="primary" onClick={requestMatches} disabled={matchState.status === "loading"}>
+              <h2 className="font-mono text-xs text-foreground-muted">02 — Facility matches</h2>
+              <Button
+                variant={hasRoute ? "secondary" : "primary"}
+                onClick={requestMatches}
+                disabled={matchState.status === "loading"}
+              >
                 {matchState.status === "loading"
                   ? "Matching…"
                   : matchState.status === "success"
@@ -176,7 +183,7 @@ export function WasteLotDetail({ id }: { id: string }) {
           </section>
 
           <section className="mt-8 border-t border-border pt-8">
-            <h2 className="font-mono text-xs text-foreground-muted">Route</h2>
+            <h2 className="font-mono text-xs text-foreground-muted">03 — Route</h2>
 
             {routeState.status === "idle" && (
               <p className="mt-4 text-sm text-foreground-secondary">
@@ -244,6 +251,7 @@ export function WasteLotDetail({ id }: { id: string }) {
             hasRoute={hasRoute}
             routeFacilityName={hasRoute ? routeState.result.facility.name : undefined}
             state={effectiveCarbonState}
+            emphasize={effectiveShipmentState.status === "idle"}
             onCalculate={() => {
               if (routeState.status === "success") calculateCarbon(routeState.result.facility.id);
             }}
