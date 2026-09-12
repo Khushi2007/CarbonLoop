@@ -3,6 +3,35 @@ import { estimateTransportCost } from "../matching/scoring";
 import { getRouteFromOSRM } from "./osrm";
 import { RouteAPIResponse, RoutingError } from "./types";
 
+/**
+ * Gets an OSRM route for already-loaded domain coordinates. This preserves the
+ * Stage 4 routing calculation while allowing other domain services to reuse
+ * the actual road distance without repeating database lookups.
+ */
+export async function calculateRouteForCoordinates({
+  origin,
+  destination,
+  quantityTonnes,
+}: {
+  origin: [number, number];
+  destination: [number, number];
+  quantityTonnes: number;
+}) {
+  const routeResult = await getRouteFromOSRM(origin, destination);
+  if ("code" in routeResult) return routeResult;
+
+  const distanceKm = routeResult.distance / 1000;
+  const durationMinutes = routeResult.duration / 60;
+  const estimatedTransportCostInr = estimateTransportCost(distanceKm, quantityTonnes);
+
+  return {
+    distanceKm,
+    durationMinutes,
+    estimatedTransportCostInr,
+    geometry: routeResult.geometry,
+  };
+}
+
 export async function calculateRoute(
   wasteLotId: string,
   facilityId: string
@@ -35,28 +64,16 @@ export async function calculateRoute(
   const facilityLat = Number(facility.latitude);
   const facilityLon = Number(facility.longitude);
 
-  // Call OSRM
-  const routeResult = await getRouteFromOSRM(
-    [wasteLon, wasteLat],
-    [facilityLon, facilityLat]
-  );
+  const routeResult = await calculateRouteForCoordinates({
+    origin: [wasteLon, wasteLat],
+    destination: [facilityLon, facilityLat],
+    quantityTonnes: Number(wasteLot.quantityTonnes),
+  });
 
   if ("code" in routeResult) {
     // This means an error occurred
     return routeResult;
   }
-
-  // Convert meters to km
-  const distanceKm = routeResult.distance / 1000;
-  
-  // Convert seconds to minutes
-  const durationMinutes = routeResult.duration / 60;
-
-  // Calculate estimated transport cost using Stage 3's function
-  const estimatedTransportCostInr = estimateTransportCost(
-    distanceKm,
-    Number(wasteLot.quantityTonnes)
-  );
 
   return {
     wasteLot: {
@@ -74,9 +91,9 @@ export async function calculateRoute(
       longitude: facilityLon,
     },
     route: {
-      distanceKm: Number(distanceKm.toFixed(3)),
-      durationMinutes: Math.round(durationMinutes),
-      estimatedTransportCostInr: Number(estimatedTransportCostInr.toFixed(2)),
+      distanceKm: Number(routeResult.distanceKm.toFixed(3)),
+      durationMinutes: Math.round(routeResult.durationMinutes),
+      estimatedTransportCostInr: Number(routeResult.estimatedTransportCostInr.toFixed(2)),
       geometry: routeResult.geometry,
     },
   };

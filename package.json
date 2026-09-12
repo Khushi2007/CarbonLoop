@@ -17,7 +17,9 @@
     "test:matching": "vitest run tests/matching.unit.test.ts",
     "test:matching:db": "vitest run tests/matching.integration.test.ts tests/matching.api.test.ts",
     "test:routing": "vitest run tests/routing.unit.test.ts",
-    "test:routing:db": "vitest run tests/routing.integration.test.ts tests/routing.api.test.ts"
+    "test:routing:db": "vitest run tests/routing.integration.test.ts tests/routing.api.test.ts",
+    "test:carbon": "vitest run tests/carbon.unit.test.ts",
+    "test:carbon:db": "vitest run tests/carbon.integration.test.ts tests/carbon.api.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
