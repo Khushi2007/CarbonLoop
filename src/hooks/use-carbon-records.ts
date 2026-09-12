@@ -100,3 +100,45 @@ export function useCarbonRecords(): LedgerState {
 
   return state;
 }
+
+export type CarbonRecordState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "not-found" }
+  | { status: "success"; record: LedgerRecord };
+
+/** Fetches a single persisted ledger record via GET /api/carbon-records/[id]. Never recalculates anything. */
+export function useCarbonRecord(id: string): CarbonRecordState {
+  const [state, setState] = useState<CarbonRecordState>({ status: "loading" });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const response = await fetch(`/api/carbon-records/${id}`);
+        if (response.status === 404) {
+          if (!cancelled) setState({ status: "not-found" });
+          return;
+        }
+        if (!response.ok) throw new Error(`Ledger record request failed (${response.status})`);
+        const record = (await response.json()) as LedgerRecord;
+        if (!cancelled) setState({ status: "success", record });
+      } catch (error) {
+        if (!cancelled) {
+          setState({
+            status: "error",
+            message: error instanceof Error ? error.message : "Unable to load this ledger record.",
+          });
+        }
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  return state;
+}

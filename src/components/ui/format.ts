@@ -15,6 +15,12 @@ export function formatDate(isoDate: string): string {
   return isoDate.slice(0, 10);
 }
 
+/** Date + time straight from the wire ISO string (labeled UTC, since no local-timezone conversion is done). */
+export function formatDateTime(isoDateTime: string): string {
+  const [date, time] = isoDateTime.split("T");
+  return `${date} ${time.slice(0, 5)} UTC`;
+}
+
 export function formatDuration(minutes: number): string {
   if (minutes < 60) return `${Math.round(minutes)} min`;
   const hours = Math.floor(minutes / 60);

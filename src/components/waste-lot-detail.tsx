@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "motion/react";
 
 import { CarbonEvidence } from "@/components/carbon-evidence";
 import { RouteMap } from "@/components/route-map";
+import { ShipmentLifecycle } from "@/components/shipment-lifecycle";
 import { Button } from "@/components/ui/button";
 import { formatCoordinates, formatDate, formatDuration, formatKm, formatTonnes } from "@/components/ui/format";
 import { Register, RegisterBody, RegisterCell, RegisterHead, RegisterHeadCell, RegisterRow } from "@/components/ui/register";
@@ -13,6 +14,7 @@ import { StatusLabel } from "@/components/ui/status-label";
 import { useCarbon, type CarbonState } from "@/hooks/use-carbon";
 import { useMatches } from "@/hooks/use-matches";
 import { useRoute } from "@/hooks/use-route";
+import { useShipment, type ShipmentState } from "@/hooks/use-shipment";
 import { useWasteLots } from "@/hooks/use-waste-lots";
 
 export function WasteLotDetail({ id }: { id: string }) {
@@ -20,6 +22,7 @@ export function WasteLotDetail({ id }: { id: string }) {
   const { state: matchState, requestMatches } = useMatches(id);
   const { state: routeState, planRoute } = useRoute(id);
   const { state: carbonState, calculateCarbon } = useCarbon(id);
+  const { state: shipmentState, createShipment, completeShipment, currentShipment } = useShipment(id);
   const reduceMotion = useReducedMotion();
 
   const hasRoute = routeState.status === "success";
@@ -29,6 +32,14 @@ export function WasteLotDetail({ id }: { id: string }) {
   const carbonFacilityMismatch =
     hasRoute && carbonState.status !== "idle" && carbonState.facilityId !== routeState.result.facility.id;
   const effectiveCarbonState: CarbonState = carbonFacilityMismatch ? { status: "idle" } : carbonState;
+  const hasCarbon = effectiveCarbonState.status === "success";
+
+  // Same staleness guard one step further down the chain: a shipment created
+  // for a facility that's no longer the current carbon/route selection is no
+  // longer relevant to what's on screen.
+  const shipmentFacilityMismatch =
+    hasCarbon && currentShipment !== undefined && currentShipment.facilityId !== effectiveCarbonState.result.facility.id;
+  const effectiveShipmentState: ShipmentState = shipmentFacilityMismatch ? { status: "idle" } : shipmentState;
 
   const lot = wasteLots.status === "success" ? wasteLots.wasteLots.find((item) => item.id === id) : undefined;
 
@@ -236,6 +247,15 @@ export function WasteLotDetail({ id }: { id: string }) {
             onCalculate={() => {
               if (routeState.status === "success") calculateCarbon(routeState.result.facility.id);
             }}
+          />
+
+          <ShipmentLifecycle
+            hasCarbon={hasCarbon}
+            state={effectiveShipmentState}
+            onCreate={() => {
+              if (effectiveCarbonState.status === "success") createShipment(effectiveCarbonState.result.facility.id);
+            }}
+            onComplete={completeShipment}
           />
         </>
       )}
