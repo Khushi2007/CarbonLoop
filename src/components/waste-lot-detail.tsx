@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 
+import { CarbonEvidence } from "@/components/carbon-evidence";
 import { RouteMap } from "@/components/route-map";
 import { Button } from "@/components/ui/button";
 import { formatCoordinates, formatDate, formatDuration, formatKm, formatTonnes } from "@/components/ui/format";
 import { Register, RegisterBody, RegisterCell, RegisterHead, RegisterHeadCell, RegisterRow } from "@/components/ui/register";
 import { formatInr } from "@/components/ui/stat";
 import { StatusLabel } from "@/components/ui/status-label";
+import { useCarbon, type CarbonState } from "@/hooks/use-carbon";
 import { useMatches } from "@/hooks/use-matches";
 import { useRoute } from "@/hooks/use-route";
 import { useWasteLots } from "@/hooks/use-waste-lots";
@@ -17,7 +19,16 @@ export function WasteLotDetail({ id }: { id: string }) {
   const wasteLots = useWasteLots();
   const { state: matchState, requestMatches } = useMatches(id);
   const { state: routeState, planRoute } = useRoute(id);
+  const { state: carbonState, calculateCarbon } = useCarbon(id);
   const reduceMotion = useReducedMotion();
+
+  const hasRoute = routeState.status === "success";
+  // If the routed facility has changed since the last carbon calculation, that
+  // result no longer applies to the current selection — present it as idle
+  // rather than a stale success/error for a facility that's no longer routed.
+  const carbonFacilityMismatch =
+    hasRoute && carbonState.status !== "idle" && carbonState.facilityId !== routeState.result.facility.id;
+  const effectiveCarbonState: CarbonState = carbonFacilityMismatch ? { status: "idle" } : carbonState;
 
   const lot = wasteLots.status === "success" ? wasteLots.wasteLots.find((item) => item.id === id) : undefined;
 
@@ -217,6 +228,15 @@ export function WasteLotDetail({ id }: { id: string }) {
               </motion.div>
             )}
           </section>
+
+          <CarbonEvidence
+            hasRoute={hasRoute}
+            routeFacilityName={hasRoute ? routeState.result.facility.name : undefined}
+            state={effectiveCarbonState}
+            onCalculate={() => {
+              if (routeState.status === "success") calculateCarbon(routeState.result.facility.id);
+            }}
+          />
         </>
       )}
     </div>
