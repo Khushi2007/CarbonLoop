@@ -3,6 +3,14 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { prisma } from "../src/lib/db/prisma";
 import { calculateRoute } from "../src/lib/routing/routing";
 import { DEMO_FACILITY_IDS, DEMO_WASTE_LOT_IDS, seedDatabase } from "../prisma/seed";
+import { resolveDatabaseIntegrationMode } from "./helpers/db-safety";
+
+// This file gates each test body on RUN_DATABASE_TESTS individually rather than
+// via describe.skip (pre-existing pattern, unchanged here). Calling the shared
+// guard at module scope still ensures that flipping RUN_DATABASE_TESTS=true
+// against an unsafe DATABASE_URL fails loudly before beforeAll's full-table
+// deleteMany calls ever run.
+resolveDatabaseIntegrationMode();
 
 // We mock fetch to avoid hitting real OSRM server during normal DB tests
 const mockFetch = vi.fn();

@@ -7,8 +7,9 @@ import { prisma } from "../src/lib/db/prisma";
 import { CONVERSION_OUTPUT_VALUE_INR_PER_TONNE } from "../src/lib/economics/constants";
 import { getCarbonRecord, listCarbonRecords } from "../src/lib/ledger/ledger";
 import { completeShipment, createShipment } from "../src/lib/shipments/shipments";
+import { resolveDatabaseIntegrationMode } from "./helpers/db-safety";
 
-const enabled = process.env.RUN_DATABASE_TESTS === "true" && Boolean(process.env.DATABASE_URL);
+const enabled = resolveDatabaseIntegrationMode();
 const describeDatabase = enabled ? describe : describe.skip;
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -53,6 +54,43 @@ describeDatabase("Shipment and ledger integration", () => {
     if ("code" in second) expect(second.code).toBe("WASTE_LOT_NOT_ELIGIBLE");
   });
 
+  it("prevents concurrent shipments from jointly overbooking a facility's capacity", async () => {
+    // Capacity for exactly one 8-tonne shipment, not two.
+    const facilityId = "66666666-6666-4666-8666-000000000002";
+    const lotIdA = "77777777-7777-4777-8777-000000000002";
+    const lotIdB = "77777777-7777-4777-8777-000000000003";
+    const generatorId = "11111111-1111-4111-8111-000000000001";
+    await prisma.facility.upsert({ where: { id: facilityId }, update: { availableCapacityTonnes: 10, status: "ACTIVE" }, create: { id: facilityId, name: "Capacity race test facility", facilityType: "BIOCHAR", latitude: 22.6, longitude: 72.9, capacityTonnesPerDay: 50, availableCapacityTonnes: 10, processingEfficiency: 80, acceptedWasteTypes: ["Rice Husk"], status: "ACTIVE" } });
+    await prisma.wasteLot.upsert({ where: { id: lotIdA }, update: { status: "AVAILABLE", quantityTonnes: 8 }, create: { id: lotIdA, generatorId, wasteType: "Rice Husk", quantityTonnes: 8, latitude: 22.5, longitude: 72.8, availableFrom: new Date(), status: "AVAILABLE" } });
+    await prisma.wasteLot.upsert({ where: { id: lotIdB }, update: { status: "AVAILABLE", quantityTonnes: 8 }, create: { id: lotIdB, generatorId, wasteType: "Rice Husk", quantityTonnes: 8, latitude: 22.5, longitude: 72.8, availableFrom: new Date(), status: "AVAILABLE" } });
+
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ code: "Ok", routes: [{ distance: 10_000, duration: 600, geometry: { type: "LineString", coordinates: [[72.8, 22.5], [72.9, 22.6]] } }] }) });
+
+    const [resultA, resultB] = await Promise.all([createShipment(lotIdA, facilityId), createShipment(lotIdB, facilityId)]);
+    const results = [resultA, resultB];
+
+    // Exactly one of the two concurrent attempts succeeds; the other is rejected
+    // for lack of capacity rather than both succeeding and jointly overbooking it.
+    expect(results.filter((result) => !("code" in result))).toHaveLength(1);
+    const rejected = results.find((result) => "code" in result);
+    if (rejected && "code" in rejected) expect(rejected.code).toBe("FACILITY_UNAVAILABLE");
+
+    // Capacity reflects exactly the one successful 8t claim (10 − 8 = 2), never
+    // 10 − 16 = −6 — proving the two decrements could not both apply.
+    const facility = await prisma.facility.findUniqueOrThrow({ where: { id: facilityId } });
+    expect(facility.availableCapacityTonnes.toNumber()).toBe(2);
+
+    // The losing transaction's waste-lot claim must have rolled back alongside its
+    // failed capacity claim — it must not be left stranded as MATCHED with no shipment.
+    const rejectedLotId = "code" in resultA ? lotIdA : lotIdB;
+    expect((await prisma.wasteLot.findUniqueOrThrow({ where: { id: rejectedLotId } })).status).toBe("AVAILABLE");
+    expect(await prisma.shipment.count({ where: { wasteLotId: rejectedLotId } })).toBe(0);
+
+    await prisma.shipment.deleteMany({ where: { facilityId } });
+    await prisma.wasteLot.deleteMany({ where: { id: { in: [lotIdA, lotIdB] } } });
+    await prisma.facility.delete({ where: { id: facilityId } });
+  });
+
   it("returns stored economic snapshots after current coefficients change", async () => {
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ code: "Ok", routes: [{ distance: 12_000, duration: 720, geometry: { type: "LineString", coordinates: [[72.9289, 22.5645], [72.94, 22.558]] } }] }) });
     const created = await createShipment(DEMO_WASTE_LOT_IDS[8], DEMO_FACILITY_IDS[0]);
@@ -86,6 +124,10 @@ describeDatabase("Shipment and ledger integration", () => {
     if ("code" in created) return;
     const completion = await completeShipment(created.id);
     expect("code" in completion).toBe(true);
+    // This is the pre-existing, intentional RangeError domain validation path (an
+    // unsupported waste-type/pathway combination) — it must still classify as the
+    // existing domain error, never as the new unexpected-failure INTERNAL_ERROR code.
+    if ("code" in completion) expect(completion.code).toBe("INVALID_SHIPMENT_STATE");
     expect((await prisma.shipment.findUniqueOrThrow({ where: { id: created.id } })).status).toBe("SCHEDULED");
     expect((await prisma.wasteLot.findUniqueOrThrow({ where: { id: lotId } })).status).toBe("MATCHED");
     expect(await prisma.carbonRecord.count({ where: { shipmentId: created.id } })).toBe(0);

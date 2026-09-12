@@ -27,4 +27,12 @@ describe("Shipment APIs", () => {
     expect((await response.json()).carbonRecordId).toBeDefined();
     expect((await complete(new NextRequest("http://localhost", { method: "POST" }), { params: Promise.resolve({ id: "no" }) })).status).toBe(400);
   });
+  it("returns a generic 500 for an unexpected completion failure, without leaking internal details", async () => {
+    vi.mocked(shipmentService.completeShipment).mockResolvedValue({ code: "INTERNAL_ERROR", message: "connection terminated unexpectedly: password authentication failed for user \"internal\"" });
+    const response = await complete(new NextRequest("http://localhost/api/shipments/x/complete", { method: "POST" }), { params: Promise.resolve({ id: ids.shipmentId }) });
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body.error).toBe("Internal Server Error");
+    expect(body.error).not.toContain("password");
+  });
 });

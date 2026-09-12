@@ -10,8 +10,9 @@ import {
   seedDatabase,
 } from "../prisma/seed";
 import { findFacilitiesWithinKilometers } from "../src/lib/db/spatial";
+import { resolveDatabaseIntegrationMode } from "./helpers/db-safety";
 
-const databaseTestsEnabled = process.env.RUN_DATABASE_TESTS === "true" && Boolean(process.env.DATABASE_URL);
+const databaseTestsEnabled = resolveDatabaseIntegrationMode();
 const describeDatabase = databaseTestsEnabled ? describe : describe.skip;
 const client = new PrismaClient();
 const testUserId = "eeeeeeee-eeee-4eee-8eee-000000000001";
@@ -49,5 +50,19 @@ describeDatabase("database foundation", () => {
     const facilities = await findFacilitiesWithinKilometers({ latitude: 23.0225, longitude: 72.5714, radiusKilometers: 30 });
     expect(facilities.length).toBeGreaterThan(0);
     expect(facilities.every((facility) => facility.distanceKm <= 30)).toBe(true);
+  });
+
+  it("does not reset an existing waste lot's lifecycle status when the seed re-runs", async () => {
+    const seededLotId = DEMO_WASTE_LOT_IDS[0];
+    await client.wasteLot.update({ where: { id: seededLotId }, data: { status: "PROCESSED" } });
+    try {
+      await seedDatabase(client);
+      const reseeded = await client.wasteLot.findUniqueOrThrow({ where: { id: seededLotId } });
+      expect(reseeded.status).toBe("PROCESSED");
+    } finally {
+      // Restore the fixture status so other test files relying on this seeded
+      // lot being AVAILABLE are unaffected by this test's mutation.
+      await client.wasteLot.update({ where: { id: seededLotId }, data: { status: "AVAILABLE" } });
+    }
   });
 });

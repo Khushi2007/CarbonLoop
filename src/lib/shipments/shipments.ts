@@ -14,6 +14,18 @@ const shipmentSummary = (shipment: { id: string; wasteLotId: string; facilityId:
 
 const COMPLETABLE_SHIPMENT_STATUSES: ShipmentStatus[] = [ShipmentStatus.SCHEDULED, ShipmentStatus.IN_TRANSIT, ShipmentStatus.DELIVERED];
 
+/**
+ * Carries an already-classified domain ShipmentError out of a Prisma
+ * interactive transaction. Throwing (rather than returning) it rolls back
+ * every write made earlier in the same transaction, while the outer catch
+ * still returns the intended typed result instead of an unhandled crash.
+ */
+class ShipmentDomainError extends Error {
+  constructor(public readonly result: ShipmentError) {
+    super(result.message);
+  }
+}
+
 export async function createShipment(wasteLotId: string, facilityId: string): Promise<ShipmentSummary | ShipmentError> {
   const [wasteLot, facility] = await Promise.all([prisma.wasteLot.findUnique({ where: { id: wasteLotId } }), prisma.facility.findUnique({ where: { id: facilityId } })]);
   if (!wasteLot) return { code: "NOT_FOUND", message: "Waste lot not found" };
@@ -30,12 +42,22 @@ export async function createShipment(wasteLotId: string, facilityId: string): Pr
   try {
     return await prisma.$transaction(async (tx) => {
       // Conditional transition is the concurrency guard: only one request can claim AVAILABLE.
-      const claimed = await tx.wasteLot.updateMany({ where: { id: wasteLotId, status: WasteLotStatus.AVAILABLE }, data: { status: WasteLotStatus.MATCHED } });
-      if (claimed.count !== 1) return { code: "WASTE_LOT_NOT_ELIGIBLE", message: "Waste lot was already claimed for another shipment." };
+      // Throwing (rather than returning) on failure ensures nothing partial is ever committed:
+      // both claims below must succeed together, or the whole transaction rolls back.
+      const claimedLot = await tx.wasteLot.updateMany({ where: { id: wasteLotId, status: WasteLotStatus.AVAILABLE }, data: { status: WasteLotStatus.MATCHED } });
+      if (claimedLot.count !== 1) throw new ShipmentDomainError({ code: "WASTE_LOT_NOT_ELIGIBLE", message: "Waste lot was already claimed for another shipment." });
+
+      // Same atomic-conditional pattern for facility capacity: the conditional decrement
+      // only succeeds while enough capacity remains, so concurrent shipments can never
+      // jointly overbook a facility. Throwing here also rolls back the waste-lot claim above.
+      const claimedCapacity = await tx.facility.updateMany({ where: { id: facilityId, availableCapacityTonnes: { gte: quantityTonnes } }, data: { availableCapacityTonnes: { decrement: quantityTonnes } } });
+      if (claimedCapacity.count !== 1) throw new ShipmentDomainError({ code: "FACILITY_UNAVAILABLE", message: "Facility no longer has sufficient available capacity." });
+
       const shipment = await tx.shipment.create({ data: { wasteLotId, facilityId, distanceKm: route.distanceKm, durationMinutes: Math.round(route.durationMinutes), transportCost: route.estimatedTransportCostInr, transportEmissionsKgCo2e, routeGeometry: route.geometry, status: ShipmentStatus.SCHEDULED, scheduledAt: new Date() } });
       return shipmentSummary(shipment);
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof ShipmentDomainError) return error.result;
     return { code: "WASTE_LOT_NOT_ELIGIBLE", message: "Unable to create shipment because the waste lot was already claimed." };
   }
 }
@@ -66,6 +88,17 @@ export async function completeShipment(shipmentId: string): Promise<CompletedShi
       return { shipment: shipmentSummary(completedShipment), carbon, economics, carbonRecordId: record.id };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch (error) {
-    return { code: "INVALID_SHIPMENT_STATE", message: error instanceof Error ? "Unable to complete shipment transaction." : "Unable to complete shipment transaction." };
+    if (error instanceof RangeError) {
+      // The carbon/economic engines (and the assumption lookups in makeResult) intentionally
+      // throw RangeError for a validation failure such as an unsupported waste-type/pathway
+      // combination. That is a genuine, expected domain error — preserve its existing mapping.
+      return { code: "INVALID_SHIPMENT_STATE", message: "Unable to complete shipment transaction." };
+    }
+    // Anything else — a dropped connection, a Serializable write conflict, or any other
+    // infrastructure failure — is unexpected, not a client mistake. Log it server-side and
+    // report a generic internal error rather than misrepresenting it as an invalid request
+    // or leaking internal error details to the caller.
+    console.error("Unexpected error while completing shipment:", error);
+    return { code: "INTERNAL_ERROR", message: "Unable to complete shipment due to an unexpected error." };
   }
 }

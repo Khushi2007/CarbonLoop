@@ -61,8 +61,12 @@ export async function seedDatabase(client: PrismaClient) {
 
   for (const [index, wasteType] of Array.from({ length: 24 }, (_, index) => wasteTypes[index % wasteTypes.length]).entries()) {
     const generator = generators[index % generators.length];
-    const data = { generatorId: userId((index % generators.length) + 1), wasteType, quantityTonnes: 8 + (index % 6) * 4.5, moisturePercent: 12 + (index % 5) * 8, qualityScore: 68 + (index % 6) * 5, latitude: generator[2] + (index % 3) * 0.008, longitude: generator[3] + (index % 4) * 0.007, availableFrom: new Date(DEMO_DATE.getTime() + index * 86_400_000), status: WasteLotStatus.AVAILABLE };
-    await client.wasteLot.upsert({ where: { id: lotId(index + 1) }, update: data, create: { id: lotId(index + 1), ...data } });
+    // Lifecycle status is deliberately excluded from `data` (and therefore from the
+    // `update` payload): re-running the seed must never revert an existing lot that
+    // has since become MATCHED/PROCESSED back to AVAILABLE while its shipment/carbon
+    // records still reference it. Only a newly created lot starts out AVAILABLE.
+    const data = { generatorId: userId((index % generators.length) + 1), wasteType, quantityTonnes: 8 + (index % 6) * 4.5, moisturePercent: 12 + (index % 5) * 8, qualityScore: 68 + (index % 6) * 5, latitude: generator[2] + (index % 3) * 0.008, longitude: generator[3] + (index % 4) * 0.007, availableFrom: new Date(DEMO_DATE.getTime() + index * 86_400_000) };
+    await client.wasteLot.upsert({ where: { id: lotId(index + 1) }, update: data, create: { id: lotId(index + 1), ...data, status: WasteLotStatus.AVAILABLE } });
   }
 }
 

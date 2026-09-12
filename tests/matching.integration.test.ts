@@ -6,8 +6,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DEMO_WASTE_LOT_IDS, seedDatabase } from "../prisma/seed";
 import { findMatchesForWasteLot } from "../src/lib/matching/matching";
 import { MatchingResult } from "../src/lib/matching/types";
+import { resolveDatabaseIntegrationMode } from "./helpers/db-safety";
 
-const databaseTestsEnabled = process.env.RUN_DATABASE_TESTS === "true" && Boolean(process.env.DATABASE_URL);
+const databaseTestsEnabled = resolveDatabaseIntegrationMode();
 const describeDatabase = databaseTestsEnabled ? describe : describe.skip;
 const client = new PrismaClient();
 

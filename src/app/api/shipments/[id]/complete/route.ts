@@ -10,5 +10,8 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ i
   const result = await completeShipment(parsed.data.id);
   if (!("code" in result)) return NextResponse.json(result, { status: 200 });
   if (result.code === "NOT_FOUND") return NextResponse.json({ error: result.message }, { status: 404 });
+  // Unexpected infrastructure failures are surfaced generically — never the underlying
+  // error message — so internal details are never exposed to the caller.
+  if (result.code === "INTERNAL_ERROR") return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   return NextResponse.json({ error: result.message }, { status: 422 });
 }

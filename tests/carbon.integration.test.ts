@@ -5,8 +5,9 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { DEMO_FACILITY_IDS, DEMO_WASTE_LOT_IDS, seedDatabase } from "../prisma/seed";
 import { calculateCarbonImpact } from "../src/lib/carbon/carbon";
 import { prisma } from "../src/lib/db/prisma";
+import { resolveDatabaseIntegrationMode } from "./helpers/db-safety";
 
-const databaseTestsEnabled = process.env.RUN_DATABASE_TESTS === "true" && Boolean(process.env.DATABASE_URL);
+const databaseTestsEnabled = resolveDatabaseIntegrationMode();
 const describeDatabase = databaseTestsEnabled ? describe : describe.skip;
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
