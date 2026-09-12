@@ -7,6 +7,149 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  role         UserRole
+  organization String?
+  latitude     Decimal?   @db.Decimal(9, 6)
+  longitude    Decimal?   @db.Decimal(9, 6)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  wasteLots    WasteLot[]
+
+  @@index([role])
+  @@index([latitude])
+  @@index([longitude])
+  @@map("users")
+}
+
+model WasteLot {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  generatorId     String         @map("generator_id") @db.Uuid
+  wasteType       String         @map("waste_type")
+  quantityTonnes  Decimal        @map("quantity_tonnes") @db.Decimal(12, 3)
+  moisturePercent Decimal?       @map("moisture_percent") @db.Decimal(5, 2)
+  qualityScore    Decimal?       @map("quality_score") @db.Decimal(5, 2)
+  latitude        Decimal        @db.Decimal(9, 6)
+  longitude       Decimal        @db.Decimal(9, 6)
+  availableFrom   DateTime       @map("available_from") @db.Timestamptz(6)
+  status          WasteLotStatus @default(AVAILABLE)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  matches         Match[]
+  shipments       Shipment[]
+  generator       User           @relation(fields: [generatorId], references: [id])
+
+  @@index([wasteType])
+  @@index([status])
+  @@index([wasteType, status])
+  @@index([latitude])
+  @@index([longitude])
+  @@index([availableFrom])
+  @@map("waste_lots")
+}
+
+model Facility {
+  id                      String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                    String
+  facilityType            FacilityType   @map("facility_type")
+  description             String?
+  latitude                Decimal        @db.Decimal(9, 6)
+  longitude               Decimal        @db.Decimal(9, 6)
+  capacityTonnesPerDay    Decimal        @map("capacity_tonnes_per_day") @db.Decimal(12, 3)
+  availableCapacityTonnes Decimal        @map("available_capacity_tonnes") @db.Decimal(12, 3)
+  processingEfficiency    Decimal        @map("processing_efficiency") @db.Decimal(5, 2)
+  acceptedWasteTypes      String[]       @map("accepted_waste_types")
+  status                  FacilityStatus @default(ACTIVE)
+  createdAt               DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  matches                 Match[]
+  shipments               Shipment[]
+
+  @@index([facilityType])
+  @@index([status])
+  @@index([availableCapacityTonnes])
+  @@index([latitude])
+  @@index([longitude])
+  @@index([acceptedWasteTypes], type: Gin)
+  @@index([facilityType, status, availableCapacityTonnes], map: "facilities_matching_idx")
+  @@map("facilities")
+}
+
+model Match {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  wasteLotId         String   @map("waste_lot_id") @db.Uuid
+  facilityId         String   @map("facility_id") @db.Uuid
+  compatibilityScore Decimal  @map("compatibility_score") @db.Decimal(5, 2)
+  carbonScore        Decimal  @map("carbon_score") @db.Decimal(5, 2)
+  distanceScore      Decimal  @map("distance_score") @db.Decimal(5, 2)
+  capacityScore      Decimal  @map("capacity_score") @db.Decimal(5, 2)
+  costScore          Decimal  @map("cost_score") @db.Decimal(5, 2)
+  overallScore       Decimal  @map("overall_score") @db.Decimal(5, 2)
+  matchReason        String?  @map("match_reason")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  facility           Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  wasteLot           WasteLot @relation(fields: [wasteLotId], references: [id], onDelete: Cascade)
+
+  @@unique([wasteLotId, facilityId])
+  @@index([facilityId])
+  @@index([overallScore])
+  @@map("matches")
+}
+
+model Shipment {
+  id                       String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  wasteLotId               String         @map("waste_lot_id") @db.Uuid
+  facilityId               String         @map("facility_id") @db.Uuid
+  distanceKm               Decimal        @map("distance_km") @db.Decimal(12, 3)
+  durationMinutes          Int            @map("duration_minutes")
+  transportCost            Decimal        @map("transport_cost") @db.Decimal(14, 2)
+  transportEmissionsKgCo2e Decimal        @map("transport_emissions_kg_co2e") @db.Decimal(14, 3)
+  routeGeometry            Json?          @map("route_geometry")
+  status                   ShipmentStatus @default(SCHEDULED)
+  scheduledAt              DateTime?      @map("scheduled_at") @db.Timestamptz(6)
+  completedAt              DateTime?      @map("completed_at") @db.Timestamptz(6)
+  createdAt                DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  carbonRecord             CarbonRecord?
+  facility                 Facility       @relation(fields: [facilityId], references: [id])
+  wasteLot                 WasteLot       @relation(fields: [wasteLotId], references: [id])
+
+  @@index([wasteLotId])
+  @@index([facilityId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@map("shipments")
+}
+
+model CarbonRecord {
+  id                             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shipmentId                     String   @unique @map("shipment_id") @db.Uuid
+  wasteQuantityTonnes            Decimal  @map("waste_quantity_tonnes") @db.Decimal(12, 3)
+  conversionPathway              String   @map("conversion_pathway")
+  conversionOutputTonnes         Decimal  @map("conversion_output_tonnes") @db.Decimal(12, 3)
+  avoidedLandfillEmissionsKgCo2e Decimal  @map("avoided_landfill_emissions_kg_co2e") @db.Decimal(14, 3)
+  carbonStoredKgCo2e             Decimal  @map("carbon_stored_kg_co2e") @db.Decimal(14, 3)
+  processEmissionsKgCo2e         Decimal  @map("process_emissions_kg_co2e") @db.Decimal(14, 3)
+  transportEmissionsKgCo2e       Decimal  @map("transport_emissions_kg_co2e") @db.Decimal(14, 3)
+  netCo2eBenefitKg               Decimal  @map("net_co2e_benefit_kg") @db.Decimal(14, 3)
+  estimatedEconomicValueInr      Decimal  @map("estimated_economic_value_inr") @db.Decimal(14, 2)
+  createdAt                      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  avoidedLandfillValueInr        Decimal  @map("avoided_landfill_value_inr") @db.Decimal(14, 2)
+  conversionOutputValueInr       Decimal  @map("conversion_output_value_inr") @db.Decimal(14, 2)
+  carbonRelatedValueInr          Decimal  @map("carbon_related_value_inr") @db.Decimal(14, 2)
+  shipment                       Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@map("carbon_records")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model spatial_ref_sys {
+  srid      Int     @id
+  auth_name String? @db.VarChar(256)
+  auth_srid Int?
+  srtext    String? @db.VarChar(2048)
+  proj4text String? @db.VarChar(2048)
+}
+
 enum UserRole {
   GENERATOR
   FACILITY
@@ -39,145 +182,6 @@ enum ShipmentStatus {
   SCHEDULED
   IN_TRANSIT
   DELIVERED
-  PROCESSED
   CANCELLED
-}
-
-model User {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name         String
-  role         UserRole
-  organization String?
-  latitude     Decimal? @db.Decimal(9, 6)
-  longitude    Decimal? @db.Decimal(9, 6)
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  wasteLots WasteLot[]
-
-  @@index([role])
-  @@index([latitude])
-  @@index([longitude])
-  @@map("users")
-}
-
-model WasteLot {
-  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  generatorId     String         @map("generator_id") @db.Uuid
-  wasteType       String         @map("waste_type")
-  quantityTonnes  Decimal        @map("quantity_tonnes") @db.Decimal(12, 3)
-  moisturePercent Decimal?       @map("moisture_percent") @db.Decimal(5, 2)
-  qualityScore    Decimal?       @map("quality_score") @db.Decimal(5, 2)
-  latitude        Decimal        @db.Decimal(9, 6)
-  longitude       Decimal        @db.Decimal(9, 6)
-  availableFrom   DateTime       @map("available_from") @db.Timestamptz(6)
-  status          WasteLotStatus @default(AVAILABLE)
-  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  generator User       @relation(fields: [generatorId], references: [id], onDelete: Restrict)
-  matches   Match[]
-  shipments Shipment[]
-
-  @@index([wasteType])
-  @@index([status])
-  @@index([wasteType, status])
-  @@index([latitude])
-  @@index([longitude])
-  @@index([availableFrom])
-  @@map("waste_lots")
-}
-
-model Facility {
-  id                      String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                    String
-  facilityType            FacilityType   @map("facility_type")
-  description             String?
-  latitude                Decimal        @db.Decimal(9, 6)
-  longitude               Decimal        @db.Decimal(9, 6)
-  capacityTonnesPerDay    Decimal        @map("capacity_tonnes_per_day") @db.Decimal(12, 3)
-  availableCapacityTonnes Decimal        @map("available_capacity_tonnes") @db.Decimal(12, 3)
-  processingEfficiency    Decimal        @map("processing_efficiency") @db.Decimal(5, 2)
-  acceptedWasteTypes      String[]       @map("accepted_waste_types")
-  status                  FacilityStatus @default(ACTIVE)
-  createdAt               DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  matches   Match[]
-  shipments Shipment[]
-
-  @@index([facilityType])
-  @@index([status])
-  @@index([availableCapacityTonnes])
-  @@index([facilityType, status, availableCapacityTonnes])
-  @@index([latitude])
-  @@index([longitude])
-  @@map("facilities")
-}
-
-model Match {
-  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  wasteLotId         String   @map("waste_lot_id") @db.Uuid
-  facilityId         String   @map("facility_id") @db.Uuid
-  compatibilityScore Decimal  @map("compatibility_score") @db.Decimal(5, 2)
-  carbonScore        Decimal  @map("carbon_score") @db.Decimal(5, 2)
-  distanceScore      Decimal  @map("distance_score") @db.Decimal(5, 2)
-  capacityScore      Decimal  @map("capacity_score") @db.Decimal(5, 2)
-  costScore          Decimal  @map("cost_score") @db.Decimal(5, 2)
-  overallScore       Decimal  @map("overall_score") @db.Decimal(5, 2)
-  matchReason        String?  @map("match_reason")
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  wasteLot WasteLot @relation(fields: [wasteLotId], references: [id], onDelete: Cascade)
-  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-
-  @@unique([wasteLotId, facilityId])
-  @@index([facilityId])
-  @@index([overallScore])
-  @@map("matches")
-}
-
-model Shipment {
-  id                       String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  wasteLotId               String         @map("waste_lot_id") @db.Uuid
-  facilityId               String         @map("facility_id") @db.Uuid
-  distanceKm               Decimal        @map("distance_km") @db.Decimal(12, 3)
-  durationMinutes          Int            @map("duration_minutes")
-  transportCost            Decimal        @map("transport_cost") @db.Decimal(14, 2)
-  transportEmissionsKgCo2e Decimal        @map("transport_emissions_kg_co2e") @db.Decimal(14, 3)
-  routeGeometry            Json?          @map("route_geometry") @db.JsonB
-  status                   ShipmentStatus @default(SCHEDULED)
-  scheduledAt              DateTime?      @map("scheduled_at") @db.Timestamptz(6)
-  completedAt              DateTime?      @map("completed_at") @db.Timestamptz(6)
-  createdAt                DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  wasteLot     WasteLot     @relation(fields: [wasteLotId], references: [id], onDelete: Restrict)
-  facility     Facility     @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  carbonRecord CarbonRecord?
-
-  @@index([wasteLotId])
-  @@index([facilityId])
-  @@index([status])
-  @@index([scheduledAt])
-  @@map("shipments")
-}
-
-model CarbonRecord {
-  id                             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  shipmentId                     String   @unique @map("shipment_id") @db.Uuid
-  wasteQuantityTonnes            Decimal  @map("waste_quantity_tonnes") @db.Decimal(12, 3)
-  conversionPathway              String   @map("conversion_pathway")
-  conversionOutputTonnes         Decimal  @map("conversion_output_tonnes") @db.Decimal(12, 3)
-  avoidedLandfillEmissionsKgCo2e Decimal  @map("avoided_landfill_emissions_kg_co2e") @db.Decimal(14, 3)
-  carbonStoredKgCo2e             Decimal  @map("carbon_stored_kg_co2e") @db.Decimal(14, 3)
-  processEmissionsKgCo2e         Decimal  @map("process_emissions_kg_co2e") @db.Decimal(14, 3)
-  transportEmissionsKgCo2e       Decimal  @map("transport_emissions_kg_co2e") @db.Decimal(14, 3)
-  netCo2eBenefitKg               Decimal  @map("net_co2e_benefit_kg") @db.Decimal(14, 3)
-  avoidedLandfillValueInr        Decimal  @map("avoided_landfill_value_inr") @db.Decimal(14, 2)
-  conversionOutputValueInr       Decimal  @map("conversion_output_value_inr") @db.Decimal(14, 2)
-  carbonRelatedValueInr          Decimal  @map("carbon_related_value_inr") @db.Decimal(14, 2)
-  estimatedEconomicValueInr      Decimal  @map("estimated_economic_value_inr") @db.Decimal(14, 2)
-  createdAt                      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
-
-  @@index([createdAt])
-  @@map("carbon_records")
+  PROCESSED
 }
