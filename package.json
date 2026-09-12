@@ -13,14 +13,17 @@
     "db:migrate": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "test": "vitest run tests",
-    "test:db": "vitest run tests/database.integration.test.ts"
+    "test:db": "vitest run tests/database.integration.test.ts",
+    "test:matching": "vitest run tests/matching.unit.test.ts",
+    "test:matching:db": "vitest run tests/matching.integration.test.ts tests/matching.api.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
     "dotenv": "^17.2.3",
     "next": "16.3.5",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "zod": "^4.6.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",
