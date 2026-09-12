@@ -7,9 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:validate": "prisma validate",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "test": "vitest run tests",
+    "test:db": "vitest run tests/database.integration.test.ts"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.0",
+    "dotenv": "^17.2.3",
     "next": "16.3.5",
     "react": "19.3.0",
     "react-dom": "19.3.0"
@@ -21,7 +29,13 @@
     "@types/react-dom": "19.3.0",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.5",
+    "prisma": "^6.19.0",
     "tailwindcss": "4.3.3",
-    "typescript": "6.0.3"
+    "tsx": "^4.21.0",
+    "typescript": "6.0.3",
+    "vitest": "^4.0.17"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }
