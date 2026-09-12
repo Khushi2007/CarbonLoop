@@ -60,45 +60,55 @@
   box-sizing: border-box;
 }
 
-body {
-  min-height: 100vh;
-  margin: 0;
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-serif), Georgia, "Times New Roman", serif;
-  font-size: 1rem;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
+/*
+ * Tailwind v4 registers its utilities inside `@layer utilities`. Any CSS
+ * written outside a layer is "unlayered" and — per the CSS cascade layers
+ * spec — always wins over layered rules regardless of specificity. Element
+ * resets below are wrapped in `@layer base` (merged into Tailwind's own
+ * base layer) so that e.g. `text-background` on an <a> still overrides
+ * this block's `color: inherit`, instead of silently losing to it.
+ */
+@layer base {
+  body {
+    min-height: 100vh;
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-serif), Georgia, "Times New Roman", serif;
+    font-size: 1rem;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
 
-h1,
-h2,
-h3,
-h4 {
-  font-family: var(--font-serif);
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-  margin: 0;
-}
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
 
-p {
-  margin: 0;
-}
+  p {
+    margin: 0;
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 
-button {
-  font: inherit;
-  color: inherit;
-}
+  button {
+    font: inherit;
+    color: inherit;
+  }
 
-table {
-  font-family: inherit;
+  table {
+    font-family: inherit;
+  }
 }
 
 ::selection {
