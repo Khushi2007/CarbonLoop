@@ -15,6 +15,13 @@ export function getPathwayCarbonCoefficients(wasteType: string, conversionPathwa
   return PATHWAY_CARBON_COEFFICIENTS[wasteType]?.[conversionPathway];
 }
 
+export function getCarbonAssumptions(wasteType: string, conversionPathway: FacilityType): CarbonAssumptions | undefined {
+  const landfillBaseline = getLandfillBaseline(wasteType);
+  const pathwayCoefficients = getPathwayCarbonCoefficients(wasteType, conversionPathway);
+  if (!landfillBaseline || !pathwayCoefficients) return undefined;
+  return { landfillBaseline, ...pathwayCoefficients, transportEmissions: TRANSPORT_EMISSIONS_KG_CO2E_PER_TONNE_KM };
+}
+
 export function calculateConversionOutputTonnes(quantityTonnes: number, processingEfficiency: number): number {
   return quantityTonnes * processingEfficiency / 100;
 }

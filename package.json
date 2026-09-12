@@ -19,7 +19,9 @@
     "test:routing": "vitest run tests/routing.unit.test.ts",
     "test:routing:db": "vitest run tests/routing.integration.test.ts tests/routing.api.test.ts",
     "test:carbon": "vitest run tests/carbon.unit.test.ts",
-    "test:carbon:db": "vitest run tests/carbon.integration.test.ts tests/carbon.api.test.ts"
+    "test:carbon:db": "vitest run tests/carbon.integration.test.ts tests/carbon.api.test.ts",
+    "test:economics": "vitest run tests/economics.unit.test.ts",
+    "test:shipments:db": "vitest run tests/shipments.integration.test.ts tests/shipments.api.test.ts tests/ledger.api.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",

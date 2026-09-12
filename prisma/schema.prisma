@@ -39,6 +39,7 @@ enum ShipmentStatus {
   SCHEDULED
   IN_TRANSIT
   DELIVERED
+  PROCESSED
   CANCELLED
 }
 
@@ -169,6 +170,9 @@ model CarbonRecord {
   processEmissionsKgCo2e         Decimal  @map("process_emissions_kg_co2e") @db.Decimal(14, 3)
   transportEmissionsKgCo2e       Decimal  @map("transport_emissions_kg_co2e") @db.Decimal(14, 3)
   netCo2eBenefitKg               Decimal  @map("net_co2e_benefit_kg") @db.Decimal(14, 3)
+  avoidedLandfillValueInr        Decimal  @map("avoided_landfill_value_inr") @db.Decimal(14, 2)
+  conversionOutputValueInr       Decimal  @map("conversion_output_value_inr") @db.Decimal(14, 2)
+  carbonRelatedValueInr          Decimal  @map("carbon_related_value_inr") @db.Decimal(14, 2)
   estimatedEconomicValueInr      Decimal  @map("estimated_economic_value_inr") @db.Decimal(14, 2)
   createdAt                      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
