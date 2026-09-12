@@ -154,3 +154,55 @@
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * Route evidence map (Leaflet). The basemap is desaturated so the route
+ * line and markers — the only saturated color on the map — read as the
+ * evidence, not the tile imagery. Chrome (zoom buttons, attribution) is
+ * restyled to plain rectangular controls instead of Leaflet's default
+ * rounded white chip look.
+ */
+.carbonloop-map .leaflet-tile-pane {
+  filter: grayscale(1) contrast(1.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  .carbonloop-map .leaflet-tile-pane {
+    filter: grayscale(1) invert(1) brightness(0.92) contrast(0.9);
+  }
+}
+
+.carbonloop-map .leaflet-control-zoom a {
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+.carbonloop-map .leaflet-control-attribution {
+  background: var(--surface);
+  color: var(--foreground-muted);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+}
+
+.carbonloop-map .leaflet-control-attribution a {
+  color: var(--foreground-muted);
+}
+
+.carbonloop-route-line {
+  stroke: var(--accent);
+}
+
+.carbonloop-marker {
+  border-radius: 9999px;
+  border: 2px solid var(--background);
+}
+
+.carbonloop-marker--origin {
+  background: var(--foreground);
+}
+
+.carbonloop-marker--destination {
+  background: var(--accent);
+}

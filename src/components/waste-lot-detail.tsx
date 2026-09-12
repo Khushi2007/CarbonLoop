@@ -1,18 +1,23 @@
 "use client";
 
 import Link from "next/link";
+import { motion, useReducedMotion } from "motion/react";
 
+import { RouteMap } from "@/components/route-map";
 import { Button } from "@/components/ui/button";
-import { formatCoordinates, formatDate, formatKm, formatTonnes } from "@/components/ui/format";
+import { formatCoordinates, formatDate, formatDuration, formatKm, formatTonnes } from "@/components/ui/format";
 import { Register, RegisterBody, RegisterCell, RegisterHead, RegisterHeadCell, RegisterRow } from "@/components/ui/register";
 import { formatInr } from "@/components/ui/stat";
 import { StatusLabel } from "@/components/ui/status-label";
 import { useMatches } from "@/hooks/use-matches";
+import { useRoute } from "@/hooks/use-route";
 import { useWasteLots } from "@/hooks/use-waste-lots";
 
 export function WasteLotDetail({ id }: { id: string }) {
   const wasteLots = useWasteLots();
   const { state: matchState, requestMatches } = useMatches(id);
+  const { state: routeState, planRoute } = useRoute(id);
+  const reduceMotion = useReducedMotion();
 
   const lot = wasteLots.status === "success" ? wasteLots.wasteLots.find((item) => item.id === id) : undefined;
 
@@ -102,29 +107,114 @@ export function WasteLotDetail({ id }: { id: string }) {
                     <RegisterHeadCell align="right">Distance</RegisterHeadCell>
                     <RegisterHeadCell align="right">Est. transport cost</RegisterHeadCell>
                     <RegisterHeadCell align="right">Overall score</RegisterHeadCell>
+                    <RegisterHeadCell align="right">
+                      <span className="sr-only">Action</span>
+                    </RegisterHeadCell>
                   </RegisterHead>
                   <RegisterBody>
-                    {matchState.matches.map((match, index) => (
-                      <RegisterRow key={match.facility.id}>
-                        <RegisterCell mono>{String(index + 1).padStart(2, "0")}</RegisterCell>
-                        <RegisterCell>
-                          <p className="text-foreground">{match.facility.name}</p>
-                          <p className="mt-1 text-xs text-foreground-muted">{match.matchReason}</p>
-                        </RegisterCell>
-                        <RegisterCell align="right" mono>
-                          {formatKm(match.distanceKm)}
-                        </RegisterCell>
-                        <RegisterCell align="right" mono>
-                          {formatInr(match.estimatedTransportCostInr)}
-                        </RegisterCell>
-                        <RegisterCell align="right" mono>
-                          {match.overallScore.toFixed(1)}
-                        </RegisterCell>
-                      </RegisterRow>
-                    ))}
+                    {matchState.matches.map((match, index) => {
+                      const isSelected = routeState.status !== "idle" && routeState.facilityId === match.facility.id;
+                      const isPlanning = routeState.status === "loading" && isSelected;
+                      return (
+                        <RegisterRow
+                          key={match.facility.id}
+                          className={isSelected ? "border-l-2 border-l-accent" : undefined}
+                        >
+                          <RegisterCell mono>{String(index + 1).padStart(2, "0")}</RegisterCell>
+                          <RegisterCell>
+                            <p className="text-foreground">{match.facility.name}</p>
+                            <p className="mt-1 text-xs text-foreground-muted">{match.matchReason}</p>
+                          </RegisterCell>
+                          <RegisterCell align="right" mono>
+                            {formatKm(match.distanceKm)}
+                          </RegisterCell>
+                          <RegisterCell align="right" mono>
+                            {formatInr(match.estimatedTransportCostInr)}
+                          </RegisterCell>
+                          <RegisterCell align="right" mono>
+                            {match.overallScore.toFixed(1)}
+                          </RegisterCell>
+                          <RegisterCell align="right">
+                            <button
+                              type="button"
+                              onClick={() => planRoute(match.facility.id)}
+                              disabled={isPlanning}
+                              className="font-mono text-xs text-accent hover:underline disabled:opacity-50"
+                            >
+                              {isPlanning ? "Planning…" : "Plan Route →"}
+                            </button>
+                          </RegisterCell>
+                        </RegisterRow>
+                      );
+                    })}
                   </RegisterBody>
                 </Register>
               </div>
+            )}
+          </section>
+
+          <section className="mt-8 border-t border-border pt-8">
+            <h2 className="font-mono text-xs text-foreground-muted">Route</h2>
+
+            {routeState.status === "idle" && (
+              <p className="mt-4 text-sm text-foreground-secondary">
+                Select a ranked match above and choose &ldquo;Plan Route&rdquo; to calculate the route to that
+                facility.
+              </p>
+            )}
+
+            {routeState.status === "loading" && (
+              <p className="mt-4 text-sm text-foreground-secondary">Calculating route…</p>
+            )}
+
+            {routeState.status === "error" && (
+              <div className="mt-4 flex flex-wrap items-center gap-4">
+                <p className="text-sm text-error">{routeState.message}</p>
+                <Button variant="secondary" onClick={() => planRoute(routeState.facilityId)}>
+                  Retry
+                </Button>
+              </div>
+            )}
+
+            {routeState.status === "success" && (
+              <motion.div
+                className="mt-4"
+                initial={reduceMotion ? undefined : { opacity: 0, y: 6 }}
+                animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+              >
+                <p className="font-mono text-xs text-foreground-muted">Route to</p>
+                <p className="text-lg text-foreground">{routeState.result.facility.name}</p>
+
+                <dl className="mt-4 grid max-w-md grid-cols-3 gap-x-8 gap-y-4">
+                  <div>
+                    <dt className="font-mono text-xs text-foreground-muted">Distance</dt>
+                    <dd className="mt-1 font-mono text-lg text-foreground">
+                      {formatKm(routeState.result.route.distanceKm)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-mono text-xs text-foreground-muted">Duration</dt>
+                    <dd className="mt-1 font-mono text-lg text-foreground">
+                      {formatDuration(routeState.result.route.durationMinutes)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-mono text-xs text-foreground-muted">Est. cost</dt>
+                    <dd className="mt-1 font-mono text-lg text-foreground">
+                      {formatInr(routeState.result.route.estimatedTransportCostInr)}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="mt-6">
+                  <RouteMap
+                    origin={[routeState.result.wasteLot.latitude, routeState.result.wasteLot.longitude]}
+                    destination={[routeState.result.facility.latitude, routeState.result.facility.longitude]}
+                    coordinates={routeState.result.route.geometry.coordinates}
+                  />
+                </div>
+              </motion.div>
             )}
           </section>
         </>

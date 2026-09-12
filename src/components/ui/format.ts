@@ -14,3 +14,10 @@ export function formatCoordinates(latitude: number, longitude: number): string {
 export function formatDate(isoDate: string): string {
   return isoDate.slice(0, 10);
 }
+
+export function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${Math.round(minutes)} min`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = Math.round(minutes % 60);
+  return remainingMinutes === 0 ? `${hours} h` : `${hours} h ${remainingMinutes} min`;
+}
