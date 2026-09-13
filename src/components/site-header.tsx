@@ -5,12 +5,15 @@ import { usePathname } from "next/navigation";
 
 import { formatCo2e, formatInr } from "@/components/ui/stat";
 import { useCarbonRecords } from "@/hooks/use-carbon-records";
+import { LogoutButton } from "@/components/logout-button";
 
 const NAV_LINKS = [
   { href: "/", label: "Overview" },
   { href: "/waste-lots", label: "Waste Lots" },
   { href: "/ledger", label: "Carbon Ledger" },
 ];
+
+type CurrentUser = { name: string; role: string } | null;
 
 function LedgerInstrument() {
   const ledger = useCarbonRecords();
@@ -29,7 +32,7 @@ function LedgerInstrument() {
   );
 }
 
-export function SiteHeader() {
+export function SiteHeader({ currentUser = null }: { currentUser?: CurrentUser }) {
   const pathname = usePathname();
 
   return (
@@ -59,6 +62,23 @@ export function SiteHeader() {
             })}
           </nav>
           <LedgerInstrument />
+          {currentUser ? (
+            <div className="flex items-center gap-x-4">
+              <Link href="/dashboard" className="font-mono text-xs text-foreground-secondary hover:text-foreground">
+                {currentUser.name} ({currentUser.role})
+              </Link>
+              <LogoutButton />
+            </div>
+          ) : (
+            <div className="flex items-center gap-x-4">
+              <Link href="/login" className="font-mono text-xs text-foreground-secondary hover:text-foreground">
+                Log in
+              </Link>
+              <Link href="/signup" className="font-mono text-xs text-accent hover:underline">
+                Sign up
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </header>

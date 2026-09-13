@@ -1,5 +1,53 @@
 # CarbonLoop
 
+## Authentication (Supabase Auth)
+
+CarbonLoop uses Supabase Auth for identity/sessions (login, signup, logout).
+Prisma remains the only domain-data access layer — Supabase Auth is never
+used to read or write `waste_lots`, `facilities`, `shipments`, or
+`carbon_records`.
+
+Set these two variables (from the **same** Supabase project `DATABASE_URL`
+points at — Project Settings > API in the Supabase dashboard):
+
+```
+NEXT_PUBLIC_SUPABASE_URL="https://[YOUR-PROJECT-REF].supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="[YOUR-SUPABASE-ANON-KEY]"
+```
+
+The anon key is Supabase's public/publishable key — it is safe to expose to
+the browser (this is why it is `NEXT_PUBLIC_`), and it never grants elevated
+access. The service-role key is intentionally **not** used anywhere in this
+app and should never be added to any `NEXT_PUBLIC_*` variable.
+
+**Dashboard configuration required once, before signup/login will work:**
+
+1. In the Supabase dashboard, go to Authentication > Providers and confirm
+   the **Email** provider is enabled (it is by default on a new project).
+2. Decide whether to require email confirmation (Authentication > Providers >
+   Email > "Confirm email"). If enabled, a new signup will not receive a
+   session until the user clicks the confirmation link; the signup UI
+   already handles this and shows a "check your email" message instead of
+   signing the user in immediately.
+3. No RLS policies need to be added for this app to function — see
+   "Row Level Security" below.
+
+Until these two environment variables are set, every page continues to work
+exactly as before Stage 7 (the auth layer treats every request as
+unauthenticated rather than failing); only signup/login and the new
+authenticated actions require them.
+
+### Row Level Security
+
+The database has RLS enabled with zero policies on every table (see
+`prisma/migrations/20260912100000_enable_rls_default_deny`). This is
+intentional and unrelated to Supabase Auth: the application connects to
+Postgres directly via Prisma using the table-owner role, which bypasses RLS
+entirely, so authorization is enforced in the Next.js server layer
+(`src/lib/auth/session.ts`) rather than in Postgres policies. Do not add
+RLS policies to make Supabase's separate, unused PostgREST API work — this
+app never calls it.
+
 ## Running the database integration test suite safely
 
 `RUN_DATABASE_TESTS=true` enables integration tests (`tests/*.integration.test.ts`)

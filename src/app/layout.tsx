@@ -3,6 +3,7 @@ import { IBM_Plex_Mono, Source_Serif_4 } from "next/font/google";
 
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { getCurrentCarbonLoopUser } from "@/lib/auth/session";
 
 import "./globals.css";
 
@@ -26,15 +27,18 @@ export const metadata: Metadata = {
   description: "GIS-Powered Waste-to-Carbon-Value Chain Tracker",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const authResult = await getCurrentCarbonLoopUser();
+  const currentUser = authResult.ok ? { name: authResult.user.name, role: authResult.user.role } : null;
+
   return (
     <html lang="en" className={`${sourceSerif.variable} ${plexMono.variable}`}>
       <body className="flex min-h-screen flex-col bg-background text-foreground">
-        <SiteHeader />
+        <SiteHeader currentUser={currentUser} />
         <main className="flex-1">{children}</main>
         <SiteFooter />
       </body>
