@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { formatCo2e, formatInr } from "@/components/ui/stat";
 import { useCarbonRecords } from "@/hooks/use-carbon-records";
 import { LogoutButton } from "@/components/logout-button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV_LINKS = [
   { href: "/", label: "Overview" },
@@ -62,6 +63,7 @@ export function SiteHeader({ currentUser = null }: { currentUser?: CurrentUser }
             })}
           </nav>
           <LedgerInstrument />
+          <ThemeToggle />
           {currentUser ? (
             <div className="flex items-center gap-x-4">
               <Link href="/dashboard" className="font-mono text-xs text-foreground-secondary hover:text-foreground">

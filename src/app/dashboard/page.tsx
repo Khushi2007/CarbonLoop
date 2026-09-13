@@ -6,7 +6,7 @@ import { getCurrentCarbonLoopUser } from "@/lib/auth/session";
 
 const ENTRY_POINTS: Record<string, { label: string; href: string }[]> = {
   GENERATOR: [
-    { label: "My Waste Lots", href: "/waste-lots" },
+    { label: "My Waste Lots", href: "/dashboard/waste-lots" },
     { label: "Create Waste Lot", href: "/waste-lots/new" },
     { label: "Carbon Ledger", href: "/ledger" },
   ],

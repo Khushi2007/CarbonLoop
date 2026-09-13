@@ -22,10 +22,18 @@ export type WasteLotListing = {
  * Lists waste lots for dashboard consumption. Defaults to AVAILABLE lots —
  * the set relevant to starting a new matching/shipment workflow — unless an
  * explicit status (or "ALL") is requested.
+ *
+ * `generatorId`, when given, scopes the listing to one generator's own lots
+ * (see GET /api/waste-lots/mine) — callers must derive it server-side from
+ * the authenticated session, never from client-supplied request data.
  */
-export async function listWasteLots(filter?: { status?: WasteLotStatusFilter }): Promise<WasteLotListing[]> {
+export async function listWasteLots(filter?: {
+  status?: WasteLotStatusFilter;
+  generatorId?: string;
+}): Promise<WasteLotListing[]> {
   const status = filter?.status;
-  const where = status === undefined ? { status: WasteLotStatus.AVAILABLE } : status === "ALL" ? {} : { status };
+  const statusWhere = status === undefined ? { status: WasteLotStatus.AVAILABLE } : status === "ALL" ? {} : { status };
+  const where = filter?.generatorId ? { ...statusWhere, generatorId: filter.generatorId } : statusWhere;
 
   const wasteLots = await prisma.wasteLot.findMany({
     where,

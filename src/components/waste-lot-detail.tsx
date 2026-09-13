@@ -4,11 +4,12 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 
 import { CarbonEvidence } from "@/components/carbon-evidence";
+import { MatchCandidateCard } from "@/components/match-candidate-card";
+import { MatchingMap } from "@/components/matching-map";
 import { RouteMap } from "@/components/route-map";
 import { ShipmentLifecycle } from "@/components/shipment-lifecycle";
 import { Button } from "@/components/ui/button";
 import { formatCoordinates, formatDate, formatDuration, formatKm, formatTonnes } from "@/components/ui/format";
-import { Register, RegisterBody, RegisterCell, RegisterHead, RegisterHeadCell, RegisterRow } from "@/components/ui/register";
 import { formatInr } from "@/components/ui/stat";
 import { StatusLabel } from "@/components/ui/status-label";
 import { useCarbon, type CarbonState } from "@/hooks/use-carbon";
@@ -149,57 +150,33 @@ export function WasteLotDetail({ id }: { id: string }) {
             )}
 
             {matchState.status === "success" && matchState.matches.length > 0 && (
-              <div className="mt-4">
-                <Register>
-                  <RegisterHead>
-                    <RegisterHeadCell>#</RegisterHeadCell>
-                    <RegisterHeadCell>Facility</RegisterHeadCell>
-                    <RegisterHeadCell align="right">Distance</RegisterHeadCell>
-                    <RegisterHeadCell align="right">Est. transport cost</RegisterHeadCell>
-                    <RegisterHeadCell align="right">Overall score</RegisterHeadCell>
-                    <RegisterHeadCell align="right">
-                      <span className="sr-only">Action</span>
-                    </RegisterHeadCell>
-                  </RegisterHead>
-                  <RegisterBody>
-                    {matchState.matches.map((match, index) => {
-                      const isSelected = routeState.status !== "idle" && routeState.facilityId === match.facility.id;
-                      const isPlanning = routeState.status === "loading" && isSelected;
-                      return (
-                        <RegisterRow
-                          key={match.facility.id}
-                          className={isSelected ? "border-l-2 border-l-accent" : undefined}
-                        >
-                          <RegisterCell mono>{String(index + 1).padStart(2, "0")}</RegisterCell>
-                          <RegisterCell>
-                            <p className="text-foreground">{match.facility.name}</p>
-                            <p className="mt-1 text-xs text-foreground-muted">{match.matchReason}</p>
-                          </RegisterCell>
-                          <RegisterCell align="right" mono>
-                            {formatKm(match.distanceKm)}
-                          </RegisterCell>
-                          <RegisterCell align="right" mono>
-                            {formatInr(match.estimatedTransportCostInr)}
-                          </RegisterCell>
-                          <RegisterCell align="right" mono>
-                            {match.overallScore.toFixed(1)}
-                          </RegisterCell>
-                          <RegisterCell align="right">
-                            <button
-                              type="button"
-                              onClick={() => planRoute(match.facility.id)}
-                              disabled={isPlanning}
-                              className="font-mono text-xs text-accent hover:underline disabled:opacity-50"
-                            >
-                              {isPlanning ? "Planning…" : "Plan Route →"}
-                            </button>
-                          </RegisterCell>
-                        </RegisterRow>
-                      );
-                    })}
-                  </RegisterBody>
-                </Register>
-              </div>
+              <>
+                <div className="mt-4">
+                  <MatchingMap
+                    origin={[lot.location.latitude, lot.location.longitude]}
+                    candidates={matchState.matches}
+                    selectedFacilityId={routeState.status !== "idle" ? routeState.facilityId : undefined}
+                    onSelectFacility={planRoute}
+                  />
+                </div>
+
+                <ul className="mt-6">
+                  {matchState.matches.map((match, index) => {
+                    const isSelected = routeState.status !== "idle" && routeState.facilityId === match.facility.id;
+                    const isPlanning = routeState.status === "loading" && isSelected;
+                    return (
+                      <MatchCandidateCard
+                        key={match.facility.id}
+                        match={match}
+                        rank={index + 1}
+                        isSelected={isSelected}
+                        isPlanning={isPlanning}
+                        onPlanRoute={() => planRoute(match.facility.id)}
+                      />
+                    );
+                  })}
+                </ul>
+              </>
             )}
           </section>
 

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GET, POST } from "../src/app/api/waste-lots/route";
+import { GET as getMine } from "../src/app/api/waste-lots/mine/route";
 import * as authSession from "../src/lib/auth/session";
 import * as wasteLotsService from "../src/lib/waste-lots/waste-lots";
 
@@ -86,5 +87,71 @@ describe("POST /api/waste-lots", () => {
     const response = await POST(new NextRequest("http://localhost/api/waste-lots", { method: "POST", body: JSON.stringify({ wasteType: "Rice Husk" }) }));
     expect(response.status).toBe(400);
     expect(wasteLotsService.createWasteLot).not.toHaveBeenCalled();
+  });
+});
+
+const generatorA = generator;
+const generatorB = { ...generator, id: "11111111-1111-4111-8111-000000000002", name: "Generator B" };
+const lotsOwnedByA = [
+  { id: "aaaaaaaa-0000-4000-8000-000000000001", generator: { id: generatorA.id } },
+  { id: "aaaaaaaa-0000-4000-8000-000000000002", generator: { id: generatorA.id } },
+];
+const lotsOwnedByB = [
+  { id: "bbbbbbbb-0000-4000-8000-000000000001", generator: { id: generatorB.id } },
+  { id: "bbbbbbbb-0000-4000-8000-000000000002", generator: { id: generatorB.id } },
+];
+
+describe("GET /api/waste-lots/mine", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("rejects an unauthenticated request with 401 and never touches the database", async () => {
+    vi.mocked(authSession.requireCarbonLoopUser).mockResolvedValue({ ok: false, status: 401, code: "UNAUTHENTICATED", message: "Authentication required." } as never);
+    const response = await getMine();
+    expect(response.status).toBe(401);
+    expect(wasteLotsService.listWasteLots).not.toHaveBeenCalled();
+  });
+
+  it("returns only Generator A's own lots (every status) when Generator A is authenticated", async () => {
+    vi.mocked(authSession.requireCarbonLoopUser).mockResolvedValue({ ok: true, user: generatorA } as never);
+    vi.mocked(wasteLotsService.listWasteLots).mockResolvedValue(lotsOwnedByA as never);
+    const response = await getMine();
+    expect(response.status).toBe(200);
+    expect(wasteLotsService.listWasteLots).toHaveBeenCalledWith({ status: "ALL", generatorId: generatorA.id });
+    const body = await response.json();
+    expect(body.wasteLots).toEqual(lotsOwnedByA);
+  });
+
+  it("returns only Generator B's own lots when Generator B is authenticated — the same endpoint scopes by whoever is signed in", async () => {
+    vi.mocked(authSession.requireCarbonLoopUser).mockResolvedValue({ ok: true, user: generatorB } as never);
+    vi.mocked(wasteLotsService.listWasteLots).mockResolvedValue(lotsOwnedByB as never);
+    const response = await getMine();
+    expect(response.status).toBe(200);
+    expect(wasteLotsService.listWasteLots).toHaveBeenCalledWith({ status: "ALL", generatorId: generatorB.id });
+    const body = await response.json();
+    expect(body.wasteLots).toEqual(lotsOwnedByB);
+  });
+
+  it("Generator A cannot obtain Generator B's lots by supplying a generatorId query parameter — the route never reads one", async () => {
+    vi.mocked(authSession.requireCarbonLoopUser).mockResolvedValue({ ok: true, user: generatorA } as never);
+    vi.mocked(wasteLotsService.listWasteLots).mockResolvedValue(lotsOwnedByA as never);
+    // GET takes no arguments at all in this route handler — there is no
+    // request object to read a spoofed query parameter from in the first
+    // place, which is itself the strongest form of this guarantee. This
+    // test documents that the resolved scope is always the authenticated
+    // caller's own ID regardless of any input.
+    await getMine();
+    expect(wasteLotsService.listWasteLots).toHaveBeenCalledWith({ status: "ALL", generatorId: generatorA.id });
+    expect(wasteLotsService.listWasteLots).not.toHaveBeenCalledWith(expect.objectContaining({ generatorId: generatorB.id }));
+  });
+
+  it("returns an empty list when the authenticated generator owns no waste lots", async () => {
+    vi.mocked(authSession.requireCarbonLoopUser).mockResolvedValue({ ok: true, user: generatorB } as never);
+    vi.mocked(wasteLotsService.listWasteLots).mockResolvedValue([]);
+    const response = await getMine();
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.wasteLots).toEqual([]);
   });
 });

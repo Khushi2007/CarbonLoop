@@ -15,24 +15,32 @@
   --warning: #93701a;
   --error: #9e2e22;
   --radius-control: 0.125rem;
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #17140f;
-    --surface: #1e1a13;
-    --surface-elevated: #262017;
-    --foreground: #ece4d0;
-    --foreground-secondary: #c2b89f;
-    --foreground-muted: #8f8571;
-    --border: #3a331f;
-    --border-strong: #4d4527;
-    --accent: #d97f3f;
-    --accent-hover: #ea9455;
-    --success: #7fa070;
-    --warning: #c79a3f;
-    --error: #cc6152;
-  }
+/*
+ * Dark mode is an explicit user choice (the header's theme toggle), not the
+ * browser's OS-level preference — a fresh visit always defaults to light
+ * unless a prior choice was saved to localStorage (see theme-toggle.tsx and
+ * the inline script in layout.tsx that applies it before first paint). The
+ * `data-theme="dark"` attribute is set on <html> by that script/toggle; the
+ * dark values below are unchanged from the app's original OS-driven palette.
+ */
+:root[data-theme="dark"] {
+  --background: #17140f;
+  --surface: #1e1a13;
+  --surface-elevated: #262017;
+  --foreground: #ece4d0;
+  --foreground-secondary: #c2b89f;
+  --foreground-muted: #8f8571;
+  --border: #3a331f;
+  --border-strong: #4d4527;
+  --accent: #d97f3f;
+  --accent-hover: #ea9455;
+  --success: #7fa070;
+  --warning: #c79a3f;
+  --error: #cc6152;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -79,6 +87,7 @@
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    transition: background-color 150ms ease, color 150ms ease;
   }
 
   h1,
@@ -166,10 +175,8 @@
   filter: grayscale(1) contrast(1.05);
 }
 
-@media (prefers-color-scheme: dark) {
-  .carbonloop-map .leaflet-tile-pane {
-    filter: grayscale(1) invert(1) brightness(0.92) contrast(0.9);
-  }
+[data-theme="dark"] .carbonloop-map .leaflet-tile-pane {
+  filter: grayscale(1) invert(1) brightness(0.92) contrast(0.9);
 }
 
 .carbonloop-map .leaflet-control-zoom a {
@@ -205,4 +212,81 @@
 
 .carbonloop-marker--destination {
   background: var(--accent);
+}
+
+/*
+ * Candidate-facility markers (MatchingMap) — deliberately distinct from the
+ * plain origin/destination dots above: each carries its own rank number so
+ * a viewer can cross-reference a marker with its row in the candidate list
+ * below without opening a popup.
+ */
+.carbonloop-marker--candidate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-elevated);
+  border-color: var(--foreground-muted);
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.carbonloop-marker--candidate-selected {
+  background: var(--accent);
+  border-color: var(--background);
+  color: var(--background);
+}
+
+.carbonloop-map .leaflet-popup-content-wrapper {
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.carbonloop-map .leaflet-popup-tip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.carbonloop-map-popup-title {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--foreground);
+}
+
+.carbonloop-map-popup-details {
+  margin: 0.5rem 0 0;
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 0.75rem;
+  row-gap: 0.125rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--foreground-secondary);
+}
+
+.carbonloop-map-popup-details dt {
+  color: var(--foreground-muted);
+}
+
+.carbonloop-map-popup-action {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.carbonloop-map-popup-action:hover {
+  text-decoration: underline;
 }
